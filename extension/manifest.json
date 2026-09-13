@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "ball",
+  "version": "1.0.0",
+  "description": "Hi, im verity, i know everything",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://classroom.google.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "menu.html",
+        "mascot/anim/7s_idle.gif"
+      ],
+      "matches": [
+        "https://classroom.google.com/*"
+      ]
+    }
+  ]
+}
