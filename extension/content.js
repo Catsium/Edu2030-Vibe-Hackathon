@@ -96,7 +96,7 @@ function normalizeTracking(saved) {
         id: material && material.id ? String(material.id) : makeId(),
         name: material && typeof material.name === "string" ? material.name : "Untitled material",
         subject: material && SUBJECT_NAMES.includes(material.subject) ? material.subject : SUBJECT_NAMES[0],
-        content: material && typeof material.content === "string" ? material.content.slice(0, 400000) : "",
+        content: material && typeof material.content === "string" ? material.content.slice(0, 2800000) : "",
         contentType: material && typeof material.contentType === "string" ? material.contentType : "text/plain",
         uploadedAt: material && typeof material.uploadedAt === "string" ? material.uploadedAt : ""
       };
@@ -1526,8 +1526,8 @@ async function addMaterial() {
       if (contentType === "application/msword") {
         throw new Error("Legacy .doc files are not supported yet. Save the document as .docx or PDF and try again.");
       }
-      if (file.size > 300000) {
-        throw new Error("For this prototype, keep PDF/DOCX files under 300 KB.");
+      if (file.size > 2000000) {
+        throw new Error("For this prototype, keep PDF/DOCX files under 2 MB.");
       }
       content = arrayBufferToBase64(await file.arrayBuffer());
     }
