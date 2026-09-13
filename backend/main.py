@@ -338,6 +338,7 @@ async def call_openrouter(
     messages: List[Dict[str, str]],
     schema: Dict[str, Any],
     tools: Optional[List[Dict[str, Any]]] = None,
+    plugins: Optional[List[Dict[str, Any]]] = None,
 ) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
     model = os.getenv("OPENROUTER_MODEL", "").strip()
@@ -356,6 +357,8 @@ async def call_openrouter(
     if tools:
         body["tools"] = tools
         body["max_tool_calls"] = 5
+    if plugins:
+        body["plugins"] = plugins
 
     try:
         timeout = httpx.Timeout(45.0)
@@ -680,22 +683,7 @@ async def create_careers(request: CareerRequest) -> CareersResponse:
 async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResponse:
     validate_evidence(request)
     validate_skills(request.skills)
-    search_tool = {
-        "type": "openrouter:web_search",
-        "parameters": {
-            "engine": "auto",
-            "max_results": 6,
-            "max_uses": 2,
-            "max_total_results": 10,
-            "search_context_size": "low",
-            "user_location": {
-                "type": "approximate",
-                "city": "Singapore",
-                "country": "SG",
-                "timezone": "Asia/Singapore",
-            },
-        },
-    }
+    search_plugins = [{"id": "web"}]
     raw, annotations = await call_openrouter(
         [
             {
@@ -727,7 +715,7 @@ async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResp
             },
         ],
         OPPORTUNITIES_SCHEMA,
-        tools=[search_tool],
+        plugins=search_plugins,
     )
     try:
         return validate_opportunity_output(raw, annotations)
