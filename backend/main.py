@@ -45,6 +45,9 @@ class SubjectEvidence(BaseModel):
     name: str
     score: int = Field(ge=0, le=100)
     topics: List[Topic] = Field(default_factory=list)
+    actualTestScore: Optional[int] = Field(default=None, ge=0, le=100)
+    quizScore: Optional[int] = Field(default=None, ge=0, le=100)
+    finalScore: Optional[int] = Field(default=None, ge=0, le=100)
 
 
 class Exposure(BaseModel):
@@ -57,6 +60,28 @@ class Evidence(BaseModel):
     subjects: List[SubjectEvidence]
     projects: List[Exposure] = Field(default_factory=list)
     interests: str = ""
+    tracking: Dict[str, Any] = Field(default_factory=dict)
+
+
+class QuizRequest(BaseModel):
+    subject: str
+    materialName: str = Field(min_length=1)
+    materialText: str = Field(min_length=1, max_length=8000)
+    focusTopic: str = ""
+
+
+class QuizQuestion(BaseModel):
+    question: str = Field(min_length=1)
+    options: List[str] = Field(min_length=3, max_length=4)
+    answerIndex: int = Field(ge=0, le=3)
+    topic: str = Field(min_length=1)
+
+
+class QuizResponse(BaseModel):
+    title: str = Field(min_length=1)
+    subject: str
+    topic: str = ""
+    questions: List[QuizQuestion]
 
 
 class SkillEvidence(BaseModel):
@@ -67,6 +92,7 @@ class SkillEvidence(BaseModel):
 
 
 class ProfileResponse(BaseModel):
+    summary: str = Field(min_length=1)
     skills: List[SkillEvidence]
 
 
@@ -82,6 +108,7 @@ class CareerRequest(Evidence):
 
 
 class CareersResponse(BaseModel):
+    intro: str = Field(min_length=1)
     pathways: List[CareerPathway]
 
 
@@ -95,12 +122,15 @@ class Opportunity(BaseModel):
     organisation: str = Field(min_length=1)
     url: HttpUrl
     summary: str = Field(min_length=1)
-    whyMatched: str = Field(min_length=1)
+    interestMatch: int = Field(ge=0, le=100)
+    whyYouMayLikeIt: str = Field(min_length=1)
+    whatItAdds: str = Field(min_length=1)
     deadline: Optional[str] = None
     eligibility: Optional[str] = None
 
 
 class OpportunitiesResponse(BaseModel):
+    intro: str = Field(min_length=1)
     opportunities: List[Opportunity]
     message: Optional[str] = None
 
@@ -124,6 +154,10 @@ PROFILE_SCHEMA = {
     "schema": {
         "type": "object",
         "properties": {
+            "summary": {
+                "type": "string",
+                "minLength": 1,
+            },
             "skills": {
                 "type": "array",
                 "minItems": 6,
@@ -145,7 +179,7 @@ PROFILE_SCHEMA = {
                 },
             }
         },
-        "required": ["skills"],
+        "required": ["summary", "skills"],
         "additionalProperties": False,
     },
 }
@@ -155,6 +189,10 @@ CAREERS_SCHEMA = {
     "schema": {
         "type": "object",
         "properties": {
+            "intro": {
+                "type": "string",
+                "minLength": 1,
+            },
             "pathways": {
                 "type": "array",
                 "minItems": 3,
@@ -178,7 +216,42 @@ CAREERS_SCHEMA = {
                 },
             }
         },
-        "required": ["pathways"],
+        "required": ["intro", "pathways"],
+        "additionalProperties": False,
+    },
+}
+
+QUIZ_SCHEMA = {
+    "name": "verity_quiz",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "minLength": 1},
+            "subject": {"type": "string", "enum": SUBJECT_NAMES},
+            "topic": {"type": "string"},
+            "questions": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 5,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "question": {"type": "string", "minLength": 1},
+                        "options": {
+                            "type": "array",
+                            "minItems": 3,
+                            "maxItems": 4,
+                            "items": {"type": "string", "minLength": 1},
+                        },
+                        "answerIndex": {"type": "integer", "minimum": 0, "maximum": 3},
+                        "topic": {"type": "string", "minLength": 1},
+                    },
+                    "required": ["question", "options", "answerIndex", "topic"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["title", "subject", "topic", "questions"],
         "additionalProperties": False,
     },
 }
@@ -188,6 +261,7 @@ OPPORTUNITIES_SCHEMA = {
     "schema": {
         "type": "object",
         "properties": {
+            "intro": {"type": "string", "minLength": 1},
             "opportunities": {
                 "type": "array",
                 "maxItems": 6,
@@ -196,9 +270,11 @@ OPPORTUNITIES_SCHEMA = {
                     "properties": {
                         "title": {"type": "string", "minLength": 1},
                         "organisation": {"type": "string", "minLength": 1},
-                        "url": {"type": "string", "format": "uri"},
+                        "url": {"type": "string", "minLength": 1},
                         "summary": {"type": "string", "minLength": 1},
-                        "whyMatched": {"type": "string", "minLength": 1},
+                        "interestMatch": {"type": "integer", "minimum": 0, "maximum": 100},
+                        "whyYouMayLikeIt": {"type": "string", "minLength": 1},
+                        "whatItAdds": {"type": "string", "minLength": 1},
                         "deadline": {"type": ["string", "null"]},
                         "eligibility": {"type": ["string", "null"]},
                     },
@@ -207,7 +283,9 @@ OPPORTUNITIES_SCHEMA = {
                         "organisation",
                         "url",
                         "summary",
-                        "whyMatched",
+                        "interestMatch",
+                        "whyYouMayLikeIt",
+                        "whatItAdds",
                         "deadline",
                         "eligibility",
                     ],
@@ -215,7 +293,7 @@ OPPORTUNITIES_SCHEMA = {
                 },
             }
         },
-        "required": ["opportunities"],
+        "required": ["intro", "opportunities"],
         "additionalProperties": False,
     },
 }
@@ -319,8 +397,10 @@ async def call_openrouter(
 
 
 def validate_profile_output(raw: Dict[str, Any]) -> ProfileResponse:
-    if set(raw.keys()) != {"skills"} or not isinstance(raw["skills"], list):
+    if set(raw.keys()) != {"summary", "skills"} or not isinstance(raw["skills"], list):
         raise ModelOutputError("The profile response has the wrong shape.")
+    if not isinstance(raw["summary"], str) or not raw["summary"].strip():
+        raise ModelOutputError("The profile summary was missing.")
     if len(raw["skills"]) != len(SKILL_NAMES):
         raise ModelOutputError("The profile response did not contain six skills.")
 
@@ -346,12 +426,14 @@ def validate_profile_output(raw: Dict[str, Any]) -> ProfileResponse:
 
     if seen != set(SKILL_NAMES):
         raise ModelOutputError("The profile response omitted a required skill.")
-    return ProfileResponse(skills=validated)
+    return ProfileResponse(summary=raw["summary"].strip(), skills=validated)
 
 
 def validate_career_output(raw: Dict[str, Any]) -> CareersResponse:
-    if set(raw.keys()) != {"pathways"} or not isinstance(raw["pathways"], list):
+    if set(raw.keys()) != {"intro", "pathways"} or not isinstance(raw["pathways"], list):
         raise ModelOutputError("The careers response has the wrong shape.")
+    if not isinstance(raw["intro"], str) or not raw["intro"].strip():
+        raise ModelOutputError("The careers introduction was missing.")
     if not 3 <= len(raw["pathways"]) <= 5:
         raise ModelOutputError("The careers response must contain 3 to 5 pathways.")
 
@@ -380,7 +462,44 @@ def validate_career_output(raw: Dict[str, Any]) -> CareersResponse:
             raise ModelOutputError("A career pathway match was invalid.")
         names.add(item["name"])
         validated.append(CareerPathway(**item))
-    return CareersResponse(pathways=validated)
+    return CareersResponse(intro=raw["intro"].strip(), pathways=validated)
+
+
+def validate_quiz_request(request: QuizRequest) -> None:
+    if request.subject not in SUBJECT_NAMES:
+        raise HTTPException(status_code=422, detail="Choose one of the supported subjects.")
+    if not request.materialText.strip():
+        raise HTTPException(status_code=422, detail="Class material text is required.")
+
+
+def validate_quiz_output(raw: Dict[str, Any]) -> QuizResponse:
+    if set(raw.keys()) != {"title", "subject", "topic", "questions"}:
+        raise ModelOutputError("The quiz response has the wrong shape.")
+    if not isinstance(raw["title"], str) or not raw["title"].strip():
+        raise ModelOutputError("The quiz title was missing.")
+    if raw["subject"] not in SUBJECT_NAMES:
+        raise ModelOutputError("The quiz subject was invalid.")
+    if not isinstance(raw["topic"], str) or not isinstance(raw["questions"], list) or not 3 <= len(raw["questions"]) <= 5:
+        raise ModelOutputError("The quiz must contain 3 to 5 questions.")
+    questions: List[QuizQuestion] = []
+    for item in raw["questions"]:
+        if not isinstance(item, dict) or set(item.keys()) != {"question", "options", "answerIndex", "topic"}:
+            raise ModelOutputError("A quiz question was malformed.")
+        options = item["options"]
+        if (
+            not isinstance(item["question"], str)
+            or not item["question"].strip()
+            or not isinstance(options, list)
+            or not 3 <= len(options) <= 4
+            or any(not isinstance(option, str) or not option.strip() for option in options)
+            or type(item["answerIndex"]) is not int
+            or not 0 <= item["answerIndex"] < len(options)
+            or not isinstance(item["topic"], str)
+            or not item["topic"].strip()
+        ):
+            raise ModelOutputError("A quiz question contained invalid fields.")
+        questions.append(QuizQuestion(**item))
+    return QuizResponse(title=raw["title"].strip(), subject=raw["subject"], topic=raw["topic"].strip(), questions=questions)
 
 
 def normalized_url(value: str) -> Optional[str]:
@@ -413,8 +532,10 @@ def validate_opportunity_output(
     raw: Dict[str, Any],
     annotations: List[Dict[str, Any]],
 ) -> OpportunitiesResponse:
-    if set(raw.keys()) != {"opportunities"} or not isinstance(raw["opportunities"], list):
+    if set(raw.keys()) != {"intro", "opportunities"} or not isinstance(raw["opportunities"], list):
         raise ModelOutputError("The opportunities response has the wrong shape.")
+    if not isinstance(raw["intro"], str) or not raw["intro"].strip():
+        raise ModelOutputError("The opportunity introduction was missing.")
     if len(raw["opportunities"]) > 6:
         raise ModelOutputError("The opportunities response contained too many results.")
 
@@ -425,7 +546,9 @@ def validate_opportunity_output(
         "organisation",
         "url",
         "summary",
-        "whyMatched",
+        "interestMatch",
+        "whyYouMayLikeIt",
+        "whatItAdds",
         "deadline",
         "eligibility",
     }
@@ -436,6 +559,8 @@ def validate_opportunity_output(
             raise ModelOutputError("An opportunity deadline was malformed.")
         if item["eligibility"] is not None and not isinstance(item["eligibility"], str):
             raise ModelOutputError("An opportunity eligibility field was malformed.")
+        if type(item["interestMatch"]) is not int or not 0 <= item["interestMatch"] <= 100:
+            raise ModelOutputError("An opportunity match score was outside 0 to 100.")
         try:
             opportunity = Opportunity(**item)
         except Exception as error:
@@ -443,8 +568,9 @@ def validate_opportunity_output(
         if normalized_url(str(opportunity.url)) in grounded_urls:
             grounded.append(opportunity)
 
+    grounded.sort(key=lambda opportunity: opportunity.interestMatch, reverse=True)
     message = None if grounded else "No suitable current opportunities were found."
-    return OpportunitiesResponse(opportunities=grounded, message=message)
+    return OpportunitiesResponse(intro=raw["intro"].strip(), opportunities=grounded, message=message)
 
 
 def evidence_context(evidence: Evidence) -> str:
@@ -456,6 +582,38 @@ async def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
+@app.post("/api/quiz", response_model=QuizResponse)
+async def create_quiz(request: QuizRequest) -> QuizResponse:
+    validate_quiz_request(request)
+    raw, _ = await call_openrouter(
+        [
+            {
+                "role": "system",
+                "content": (
+                    "You are Verity, creating a short classroom practice quiz. Use only the supplied class "
+                    "material. Create 3 to 5 multiple-choice questions with one correct answer. Keep questions "
+                    "clear for a student, label each question with the topic it tests, and use the requested focus "
+                    "topic when it is supplied. Do not infer personal traits or add facts not present in the material. "
+                    "Return only JSON matching the schema."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Subject: " + request.subject + "\nMaterial title: " + request.materialName
+                    + "\nFocus topic: " + (request.focusTopic or "Use the most useful topic in the material")
+                    + "\nClass material:\n" + request.materialText
+                ),
+            },
+        ],
+        QUIZ_SCHEMA,
+    )
+    try:
+        return validate_quiz_output(raw)
+    except ModelOutputError as error:
+        raise HTTPException(status_code=502, detail=str(error))
+
+
 @app.post("/api/profile", response_model=ProfileResponse)
 async def create_profile(evidence: Evidence) -> ProfileResponse:
     validate_evidence(evidence)
@@ -465,10 +623,13 @@ async def create_profile(evidence: Evidence) -> ProfileResponse:
                 "role": "system",
                 "content": (
                     "You are Verity. Infer evidence strength, not objective ability. "
-                    "Use only the supplied subjects, topic scores, projects, exposure, and interests. "
-                    "Return all six required skills. Be conservative when evidence is limited and explain "
-                    "the limitation. Never infer demographics, socioeconomic status, personality, disability, "
-                    "or other sensitive characteristics. Return only JSON matching the schema."
+                    "Use only the supplied subjects, topic scores, projects, exposure, tracking activity, and interests. "
+                    "Treat quiz attempts, class materials, topics practiced, and learning progress as important context; "
+                    "do not base the profile on hard subject scores alone. "
+                    "Return one short supportive summary describing the strongest evidence, followed by all "
+                    "six required skills. Be conservative when evidence is limited and explain the limitation. "
+                    "Never infer demographics, socioeconomic status, personality, disability, or other sensitive "
+                    "characteristics. Never mention evidence that is not supplied. Return only JSON matching the schema."
                 ),
             },
             {
@@ -494,8 +655,10 @@ async def create_careers(request: CareerRequest) -> CareersResponse:
                 "role": "system",
                 "content": (
                     "You are Verity. Recommend broad pathways worth exploring, not guaranteed careers. "
-                    "Use only the supplied evidence, inferred skills, and interests. Explain the match and "
-                    "avoid deterministic admissions or success claims. Return only JSON matching the schema."
+                    "Use only the supplied evidence, tracking activity, inferred skills, and interests. Start with one short, "
+                    "supportive intro explaining what the profile leans toward. Explain every pathway match "
+                    "and avoid deterministic admissions or success claims. Never mention evidence that is not "
+                    "supplied. Return only JSON matching the schema."
                 ),
             },
             {
@@ -540,7 +703,13 @@ async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResp
                 "content": (
                     "You are Verity's opportunity finder. You must use web search before answering. "
                     "Find current, real opportunities relevant to students in Singapore. Prioritise matches "
-                    "for strong subjects, inferred skills, pathways, interests, and missing exposure. "
+                    "by explicit current interests first, then tracked learning activity, inferred skills, strong subjects and topics, "
+                    "pathways, existing exposure, and exposure gaps. A practical opportunity matching a stated "
+                    "interest should rank above a generic opportunity. Start with a short 1 to 2 sentence "
+                    "personalised intro using only supplied evidence. For every result, provide an integer "
+                    "interestMatch from 0 to 100, address the student directly in whyYouMayLikeIt, and explain "
+                    "whatItAdds to the current record. If matching exposure already exists, describe building "
+                    "on it instead of claiming a gap. "
                     "Use only facts supported by the search results. Copy each URL exactly from a cited "
                     "search result. Never invent organisations, dates, fees, deadlines, eligibility, or URLs. "
                     "Use null when a deadline or eligibility detail is not supported. If suitable current "

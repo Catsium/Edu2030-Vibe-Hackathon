@@ -1,8 +1,9 @@
-const BACKEND_API_URL = "REPLACE_WITH_RENDER_API_URL";
+const BACKEND_API_URL = "https://edu2030-vibe-hackathon.onrender.com";
 const ALLOWED_ENDPOINTS = new Set([
   "/api/profile",
   "/api/careers",
-  "/api/opportunities"
+  "/api/opportunities",
+  "/api/quiz"
 ]);
 
 chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {

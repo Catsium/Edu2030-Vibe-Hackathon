@@ -9,6 +9,7 @@
       <div>
         <span class="verity-eyebrow">VERITY</span>
         <strong>Student growth companion</strong>
+        <small id="verity-mascot-caption" role="status" aria-live="polite" hidden></small>
       </div>
     </div>
 
@@ -18,46 +19,107 @@
   </div>
 
   <div class="assistant-content">
-    <nav class="verity-nav" aria-label="Verity sections">
-      <button type="button" class="verity-nav-button active" data-view="home">Home</button>
-      <button type="button" class="verity-nav-button" data-view="data-input">Data Input</button>
-      <button type="button" class="verity-nav-button" data-view="records">Records</button>
-      <button type="button" class="verity-nav-button" data-view="careers">Careers &amp; Opportunities</button>
-    </nav>
+    <div class="verity-nav-row">
+      <nav class="verity-nav" aria-label="Verity sections">
+        <button type="button" class="verity-nav-button active" data-view="stats">Stats + Tracking</button>
+        <button type="button" class="verity-nav-button" data-view="careers">Opportunity + Career Finder</button>
+        <button type="button" class="verity-nav-button" data-view="records">Records</button>
+      </nav>
+      <button type="button" id="open-data-input-button" class="override-button" data-view="data-input">Override data</button>
+    </div>
 
     <main class="verity-main">
-      <section class="verity-view" id="view-home">
+      <section class="verity-view" id="view-stats">
         <div class="view-heading">
           <div>
-            <span class="section-kicker">OVERVIEW</span>
-            <h1>Welcome back</h1>
-            <p>Turn the evidence you record into strengths and next steps worth exploring.</p>
+            <span class="section-kicker">STATS + TRACKING</span>
+            <h1>Your learning signals</h1>
+            <p>Class evidence, topic progress, and quiz practice in one place.</p>
           </div>
-          <span class="demo-badge" id="home-demo-badge" hidden>Demo data</span>
+          <span class="demo-badge" id="stats-demo-badge" hidden>Demo data</span>
         </div>
 
-        <div class="home-stats">
+        <div id="stats-observation" class="personalized-intro" hidden></div>
+
+        <div class="stats-overview">
           <article class="stat-card">
-            <span class="stat-label">Strong subjects</span>
-            <div id="home-strong-subjects" class="stat-list"></div>
+            <span class="stat-label">Strongest subjects</span>
+            <div id="stats-strong-subjects" class="stat-list"></div>
           </article>
           <article class="stat-card">
-            <span class="stat-label">Strong inferred skills</span>
-            <div id="home-strong-skills" class="stat-list"></div>
+            <span class="stat-label">Inferred strengths</span>
+            <div id="stats-strong-skills" class="stat-list"></div>
           </article>
           <article class="stat-card">
-            <span class="stat-label">Projects / exposure</span>
-            <strong id="home-project-count" class="stat-number">0</strong>
-            <span class="stat-help">records saved locally</span>
+            <span class="stat-label">Learning activity</span>
+            <strong id="stats-quiz-count" class="stat-number">0</strong>
+            <span id="stats-activity-help" class="stat-help">quizzes completed</span>
           </article>
         </div>
 
-        <div id="home-signal" class="signal-card" hidden></div>
+        <div class="tracking-section stats-skill-profile">
+          <div class="subsection-heading">
+            <div>
+              <h2>Skill profile</h2>
+              <p>The radar combines recorded learning activity with the evidence you provide.</p>
+            </div>
+          </div>
+          <div id="stats-skills-chart" class="radar-card"></div>
+        </div>
 
+        <div class="tracking-section">
+          <div class="subsection-heading">
+            <div>
+              <h2>Subject progress</h2>
+              <p>Final scores use 70% quiz evidence and 30% actual tests. A score is provisional until both are present.</p>
+            </div>
+          </div>
+          <div id="stats-subjects" class="tracking-subject-grid"></div>
+        </div>
+
+        <div id="stats-signal" class="signal-card" hidden></div>
+
+        <div class="tracking-grid">
+          <section class="tracking-panel">
+            <div class="subsection-heading">
+              <div>
+                <h2>Class materials</h2>
+                <p>Upload a text-based handout or notes for a quick targeted quiz.</p>
+              </div>
+            </div>
+            <div class="material-form">
+              <input id="material-file-input" type="file" accept=".txt,.md,.csv,text/plain,text/markdown" aria-label="Upload class material">
+              <input id="material-title-input" type="text" placeholder="Material title (optional)">
+              <select id="material-subject-select" aria-label="Material subject"></select>
+              <button type="button" id="add-material-button" class="secondary-button">Save material</button>
+            </div>
+            <div id="material-status" class="inline-status" role="status" aria-live="polite"></div>
+            <div id="materials-list" class="materials-list"></div>
+          </section>
+
+          <section class="tracking-panel">
+            <div class="subsection-heading">
+              <div>
+                <h2>Targeted quizzes</h2>
+                <p id="focus-topic-copy">Complete a quiz to add the 70% learning component.</p>
+              </div>
+            </div>
+            <div class="quiz-generator">
+              <select id="quiz-material-select" aria-label="Material for quiz"></select>
+              <select id="quiz-topic-select" aria-label="Optional focus topic"></select>
+              <button type="button" id="generate-quiz-button" class="primary-button">Generate quiz</button>
+            </div>
+            <div id="quiz-status" class="inline-status" role="status" aria-live="polite"></div>
+            <div id="quizzes-list" class="quizzes-list"></div>
+            <div id="active-quiz" class="active-quiz" hidden></div>
+          </section>
+        </div>
+
+        <div id="stats-status" class="inline-status" role="status" aria-live="polite"></div>
         <div class="home-actions">
-          <button type="button" class="primary-button" data-view="data-input">Update Evidence</button>
+          <button type="button" id="analyse-profile-button" class="primary-button">Refresh skill profile</button>
           <button type="button" class="secondary-button" data-view="records">View Records</button>
-          <button type="button" class="secondary-button" data-view="careers">Explore Careers &amp; Opportunities</button>
+          <button type="button" class="secondary-button" data-view="careers">Find pathways &amp; opportunities</button>
         </div>
       </section>
 
@@ -65,8 +127,8 @@
         <div class="view-heading">
           <div>
             <span class="section-kicker">EVIDENCE</span>
-            <h1>Student Data Input</h1>
-            <p>Record evidence Verity can use. You do not need to rate abstract skills.</p>
+            <h1>Override student data</h1>
+            <p>Change the test evidence that feeds every score, record, pathway, and opportunity.</p>
           </div>
           <span class="demo-badge" id="data-demo-badge" hidden>Demo data</span>
         </div>
@@ -77,7 +139,7 @@
           <div class="subsection-heading">
             <div>
               <h2>Subjects</h2>
-              <p>Use whole-number scores from 0 to 100.</p>
+              <p>Actual test / WA scores are the 30% component. Use whole numbers from 0 to 100.</p>
             </div>
           </div>
           <div id="subjects-editor" class="subject-editor"></div>
@@ -101,8 +163,8 @@
 
         <div class="editor-actions">
           <button type="button" id="save-evidence-button" class="secondary-button">Save Evidence</button>
-          <button type="button" id="analyse-profile-button" class="primary-button">Analyse My Profile</button>
           <button type="button" id="load-demo-data-button" class="text-button">Load Demo Data</button>
+          <button type="button" class="text-button" data-view="stats">Back to Stats + Tracking</button>
         </div>
       </section>
 
@@ -111,19 +173,28 @@
           <div>
             <span class="section-kicker">RECORDS</span>
             <h1>Learning profile</h1>
-            <p>These strengths reflect the evidence currently recorded in this prototype.</p>
+            <p>Your evidence, progress, strengths, and portfolio in one view.</p>
           </div>
           <span class="demo-badge" id="records-demo-badge" hidden>Demo data</span>
         </div>
 
         <div id="records-signal"></div>
+        <div id="records-observation" class="personalized-intro" hidden></div>
         <div class="records-section">
           <h2>Subjects and topics</h2>
           <div id="records-subjects" class="records-grid"></div>
         </div>
         <div class="records-section">
+          <h2>Learning activity</h2>
+          <p class="disclaimer">Quiz attempts and saved class materials add context beyond test scores.</p>
+          <div id="records-learning-activity" class="learning-activity-list"></div>
+        </div>
+        <div class="records-section">
           <h2>Inferred skills</h2>
-          <div id="records-skills" class="skills-list"></div>
+          <div class="skills-overview">
+            <div id="records-skills-chart" class="radar-card"></div>
+            <div id="records-skills" class="skills-list"></div>
+          </div>
         </div>
         <div class="records-section">
           <h2>Demonstrated Strengths</h2>
@@ -140,12 +211,13 @@
         <div class="view-heading">
           <div>
             <span class="section-kicker">NEXT STEPS</span>
-            <h1>Careers &amp; Opportunities</h1>
+            <h1>Opportunity + Career Finder</h1>
             <p>Explore pathways and current opportunities that may fit your evidence.</p>
           </div>
         </div>
 
         <div id="careers-status" class="inline-status" role="status" aria-live="polite"></div>
+        <div id="careers-intro" class="personalized-intro" hidden></div>
         <div class="career-toolbar">
           <div>
             <h2>Pathways worth exploring</h2>
@@ -158,8 +230,8 @@
         <div class="opportunity-panel">
           <div class="career-toolbar">
             <div>
-              <h2>Opportunity Finder</h2>
-              <p>Search current Singapore-relevant opportunities using your profile.</p>
+              <h2>Opportunities Verity thinks you’d enjoy</h2>
+              <p>Search current Singapore-relevant opportunities using your profile. Match scores are directional, not a promise.</p>
             </div>
           </div>
           <label class="field-label" for="opportunity-request">What are you interested in right now?</label>
@@ -168,6 +240,7 @@
             <button type="button" id="find-opportunities-button" class="primary-button">Find Opportunities</button>
           </div>
           <div id="opportunities-status" class="inline-status" role="status" aria-live="polite"></div>
+          <div id="opportunity-intro" class="personalized-intro" hidden></div>
           <div id="opportunities-list" class="opportunities-list"></div>
         </div>
       </section>
