@@ -1,19 +1,176 @@
 <button id="classroom-assistant-button">
-  <img id="assistant-button-img" alt="Assistant">
+  <img id="assistant-button-img" alt="Open Verity">
 </button>
 
 <div id="classroom-assistant-popup">
   <div class="assistant-header">
-    <span>Classroom Assistant</span>
+    <div class="verity-brand">
+      <img id="verity-header-mascot" alt="Verity">
+      <div>
+        <span class="verity-eyebrow">VERITY</span>
+        <strong>Student growth companion</strong>
+      </div>
+    </div>
 
     <button id="assistant-close-button" aria-label="Close">
-        x
+      ×
     </button>
   </div>
 
-  
-
   <div class="assistant-content">
-    Hello! How can I help? verity
+    <nav class="verity-nav" aria-label="Verity sections">
+      <button type="button" class="verity-nav-button active" data-view="home">Home</button>
+      <button type="button" class="verity-nav-button" data-view="data-input">Data Input</button>
+      <button type="button" class="verity-nav-button" data-view="records">Records</button>
+      <button type="button" class="verity-nav-button" data-view="careers">Careers &amp; Opportunities</button>
+    </nav>
+
+    <main class="verity-main">
+      <section class="verity-view" id="view-home">
+        <div class="view-heading">
+          <div>
+            <span class="section-kicker">OVERVIEW</span>
+            <h1>Welcome back</h1>
+            <p>Turn the evidence you record into strengths and next steps worth exploring.</p>
+          </div>
+          <span class="demo-badge" id="home-demo-badge" hidden>Demo data</span>
+        </div>
+
+        <div class="home-stats">
+          <article class="stat-card">
+            <span class="stat-label">Strong subjects</span>
+            <div id="home-strong-subjects" class="stat-list"></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Strong inferred skills</span>
+            <div id="home-strong-skills" class="stat-list"></div>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Projects / exposure</span>
+            <strong id="home-project-count" class="stat-number">0</strong>
+            <span class="stat-help">records saved locally</span>
+          </article>
+        </div>
+
+        <div id="home-signal" class="signal-card" hidden></div>
+
+        <div class="home-actions">
+          <button type="button" class="primary-button" data-view="data-input">Update Evidence</button>
+          <button type="button" class="secondary-button" data-view="records">View Records</button>
+          <button type="button" class="secondary-button" data-view="careers">Explore Careers &amp; Opportunities</button>
+        </div>
+      </section>
+
+      <section class="verity-view" id="view-data-input" hidden>
+        <div class="view-heading">
+          <div>
+            <span class="section-kicker">EVIDENCE</span>
+            <h1>Student Data Input</h1>
+            <p>Record evidence Verity can use. You do not need to rate abstract skills.</p>
+          </div>
+          <span class="demo-badge" id="data-demo-badge" hidden>Demo data</span>
+        </div>
+
+        <div id="data-status" class="inline-status" role="status" aria-live="polite"></div>
+
+        <div class="editor-section">
+          <div class="subsection-heading">
+            <div>
+              <h2>Subjects</h2>
+              <p>Use whole-number scores from 0 to 100.</p>
+            </div>
+          </div>
+          <div id="subjects-editor" class="subject-editor"></div>
+        </div>
+
+        <div class="editor-section">
+          <div class="subsection-heading">
+            <div>
+              <h2>Projects / exposure</h2>
+              <p>Add projects, competitions, workshops, courses, or work exposure.</p>
+            </div>
+            <button type="button" id="add-project-button" class="small-button">+ Add record</button>
+          </div>
+          <div id="projects-editor" class="projects-editor"></div>
+        </div>
+
+        <div class="editor-section">
+          <label class="field-label" for="interests-input">Interests / things I want to explore</label>
+          <textarea id="interests-input" rows="3" placeholder="e.g. engineering, healthcare, something hands-on"></textarea>
+        </div>
+
+        <div class="editor-actions">
+          <button type="button" id="save-evidence-button" class="secondary-button">Save Evidence</button>
+          <button type="button" id="analyse-profile-button" class="primary-button">Analyse My Profile</button>
+          <button type="button" id="load-demo-data-button" class="text-button">Load Demo Data</button>
+        </div>
+      </section>
+
+      <section class="verity-view" id="view-records" hidden>
+        <div class="view-heading">
+          <div>
+            <span class="section-kicker">RECORDS</span>
+            <h1>Learning profile</h1>
+            <p>These strengths reflect the evidence currently recorded in this prototype.</p>
+          </div>
+          <span class="demo-badge" id="records-demo-badge" hidden>Demo data</span>
+        </div>
+
+        <div id="records-signal"></div>
+        <div class="records-section">
+          <h2>Subjects and topics</h2>
+          <div id="records-subjects" class="records-grid"></div>
+        </div>
+        <div class="records-section">
+          <h2>Inferred skills</h2>
+          <div id="records-skills" class="skills-list"></div>
+        </div>
+        <div class="records-section">
+          <h2>Demonstrated Strengths</h2>
+          <p class="disclaimer">Based on the evidence currently recorded in this prototype.</p>
+          <div id="records-strengths" class="strengths-list"></div>
+        </div>
+        <div class="records-section">
+          <h2>Projects / exposure</h2>
+          <div id="records-projects" class="exposure-list"></div>
+        </div>
+      </section>
+
+      <section class="verity-view" id="view-careers" hidden>
+        <div class="view-heading">
+          <div>
+            <span class="section-kicker">NEXT STEPS</span>
+            <h1>Careers &amp; Opportunities</h1>
+            <p>Explore pathways and current opportunities that may fit your evidence.</p>
+          </div>
+        </div>
+
+        <div id="careers-status" class="inline-status" role="status" aria-live="polite"></div>
+        <div class="career-toolbar">
+          <div>
+            <h2>Pathways worth exploring</h2>
+            <p>Recommendations are exploratory, not guarantees.</p>
+          </div>
+          <button type="button" id="find-careers-button" class="primary-button">Find pathways for me</button>
+        </div>
+        <div id="pathways-list" class="pathways-list"></div>
+
+        <div class="opportunity-panel">
+          <div class="career-toolbar">
+            <div>
+              <h2>Opportunity Finder</h2>
+              <p>Search current Singapore-relevant opportunities using your profile.</p>
+            </div>
+          </div>
+          <label class="field-label" for="opportunity-request">What are you interested in right now?</label>
+          <input id="opportunity-request" type="text" placeholder="e.g. something hands-on during the holidays">
+          <div class="opportunity-actions">
+            <button type="button" id="find-opportunities-button" class="primary-button">Find Opportunities</button>
+          </div>
+          <div id="opportunities-status" class="inline-status" role="status" aria-live="polite"></div>
+          <div id="opportunities-list" class="opportunities-list"></div>
+        </div>
+      </section>
+    </main>
   </div>
 </div>

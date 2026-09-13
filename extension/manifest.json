@@ -3,6 +3,16 @@
   "name": "ball",
   "version": "1.0.0",
   "description": "Hi, im verity, i know everything",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.onrender.com/*",
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": [
@@ -21,7 +31,9 @@
     {
       "resources": [
         "menu.html",
-        "mascot/anim/7s_idle.gif"
+        "mascot/anim/7s_idle.gif",
+        "mascot/anim/14s_idle_to_loading.gif",
+        "mascot/static/verity.jpeg"
       ],
       "matches": [
         "https://classroom.google.com/*"
