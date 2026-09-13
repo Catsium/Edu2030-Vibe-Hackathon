@@ -506,7 +506,7 @@ def extract_docx_text(data: bytes) -> str:
 
 def material_text(request: QuizRequest) -> str:
     if request.materialText.strip():
-        return request.materialText.strip()
+        return request.materialText.strip()[:12000]
     if not request.materialData:
         return ""
     try:
@@ -514,9 +514,9 @@ def material_text(request: QuizRequest) -> str:
     except (ValueError, binascii.Error):
         return ""
     if request.materialType == "application/pdf":
-        return extract_pdf_text(data)
+        return extract_pdf_text(data)[:12000]
     if request.materialType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return extract_docx_text(data)
+        return extract_docx_text(data)[:12000]
     return ""
 
 

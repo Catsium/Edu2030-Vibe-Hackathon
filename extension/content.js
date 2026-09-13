@@ -404,9 +404,10 @@ function renderStatsTracking() {
   }
 
   skillsNode.replaceChildren();
-  const skills = studentProfile.skillProfile && Array.isArray(studentProfile.skillProfile.skills)
-    ? studentProfile.skillProfile.skills.slice().sort(function (a, b) { return Number(b.score) - Number(a.score); }).slice(0, 3)
+  const allSkills = studentProfile.skillProfile && Array.isArray(studentProfile.skillProfile.skills)
+    ? studentProfile.skillProfile.skills.slice()
     : [];
+  const skills = allSkills.slice().sort(function (a, b) { return Number(b.score) - Number(a.score); }).slice(0, 3);
   skills.filter(function (skill) { return Number(skill.score) >= 70; }).forEach(function (skill) {
     addText(skillsNode, "span", null, skill.name + " · " + skill.score + "/100");
   });
@@ -432,7 +433,7 @@ function renderStatsTracking() {
   }
   const statsChart = byId("stats-skills-chart");
   if (statsChart) {
-    renderRadarChart(statsChart, skills);
+    renderRadarChart(statsChart, allSkills);
   }
 
   subjectsGrid.replaceChildren();
@@ -747,6 +748,10 @@ function renderHome() {
 }
 
 function renderRadarChart(node, skills) {
+  if (!node) {
+    return;
+  }
+  skills = Array.isArray(skills) ? skills : [];
   node.replaceChildren();
   if (!skills.length) {
     addText(node, "p", "empty-copy", "Analyse your saved evidence to see your skill shape.");

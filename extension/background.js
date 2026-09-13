@@ -21,11 +21,24 @@ chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
       }
 
       const baseUrl = BACKEND_API_URL.replace(/\/+$/, "");
-      const response = await fetch(baseUrl + message.endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(message.payload || {})
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(function () { controller.abort(); }, 60000);
+      let response;
+      try {
+        response = await fetch(baseUrl + message.endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(message.payload || {}),
+          signal: controller.signal
+        });
+      } catch (fetchError) {
+        if (fetchError && fetchError.name === "AbortError") {
+          throw new Error("The backend request timed out after 60 seconds.");
+        }
+        throw fetchError;
+      } finally {
+        clearTimeout(timeoutId);
+      }
       const responseText = await response.text();
       let data = null;
       try {
