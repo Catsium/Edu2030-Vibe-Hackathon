@@ -53,8 +53,26 @@
   font-weight: 600;
 
   border-bottom: 1px solid #eee;
+
+  display: flex;
+  justify-content: space-between;
 }
 
 .assistant-content {
   padding: 16px;
+}
+
+#assistant-close-button {
+  border: none;
+  background: transparent;
+
+  font-size: 24px;
+
+  cursor: pointer;
+
+  color: #666;
+}
+
+#assistant-close-button:hover {
+  color: #000;
 }
