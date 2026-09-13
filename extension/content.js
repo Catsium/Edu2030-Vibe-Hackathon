@@ -17,8 +17,10 @@ async function loadAssistant() {
   const buttonImg = document.getElementById("assistant-button-img");
   const popup = document.getElementById("classroom-assistant-popup");
   const closeButton = document.getElementById("assistant-close-button");
+  const frame = document.getElementById("verity-app-frame");
 
-  buttonImg.src = chrome.runtime.getURL("mascot/anim/7s_idle.gif");;
+  buttonImg.src = chrome.runtime.getURL("mascot/anim/7s_idle.gif");
+  frame.src = chrome.runtime.getURL("verity/index.html");
 
   // Open / close popup
   button.addEventListener("click", () => {

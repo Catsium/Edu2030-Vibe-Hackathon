@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f0b526">
+  <title>Verity — a little clarity, every day</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main" data-action="skip">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <a class="brand" href="#home"><img src="../mascot/static/verity.jpeg" alt=""><span>verity<span class="brand-dot">.</span></span></a>
+      <div class="space-label">Your learning space</div>
+      <nav id="nav"></nav>
+      <div class="sidebar-bottom">
+        <div class="small-note"><span class="status-dot"></span>A little clarity, every day.</div>
+        <button class="profile" data-action="navigate" data-to="connections"><span class="avatar">A</span><span><strong>Alex Tan</strong><small>Secondary 3 · sample profile</small></span></button>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <button class="icon-button mobile-menu" data-action="menu" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+        <div class="breadcrumb">My workspace <span>/</span> <strong id="crumb">Overview</strong></div>
+        <div class="topbar-right"><span class="preview-badge"><span></span>Concept preview</span><button class="text-button" data-action="navigate" data-to="map">Explore the idea <span aria-hidden="true">↗</span></button></div>
+      </header>
+      <main id="main" tabindex="-1"></main>
+      <footer class="app-footer"><span>Exploratory wireframe · sample data · no live AI or integrations</span><button class="text-button" data-action="reset">Reset demo</button></footer>
+    </div>
+  </div>
+  <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

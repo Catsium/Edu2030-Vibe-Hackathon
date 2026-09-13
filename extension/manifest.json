@@ -21,7 +21,10 @@
     {
       "resources": [
         "menu.html",
-        "mascot/anim/7s_idle.gif"
+        "verity/*",
+        "verity/**/*",
+        "mascot/anim/7s_idle.gif",
+        "mascot/static/verity.jpeg"
       ],
       "matches": [
         "https://classroom.google.com/*"
