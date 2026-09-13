@@ -579,14 +579,25 @@ def normalized_url(value: str) -> Optional[str]:
 
 def citation_urls(annotations: List[Dict[str, Any]]) -> Set[str]:
     urls: Set[str] = set()
-    for annotation in annotations:
-        if not isinstance(annotation, dict) or annotation.get("type") != "url_citation":
-            continue
-        citation = annotation.get("url_citation")
-        if isinstance(citation, dict) and isinstance(citation.get("url"), str):
-            url = normalized_url(citation["url"])
-            if url:
-                urls.add(url)
+    def collect(value: Any) -> None:
+        if isinstance(value, list):
+            for item in value:
+                collect(item)
+            return
+        if not isinstance(value, dict):
+            return
+        if value.get("type") == "url_citation":
+            citation = value.get("url_citation")
+            if isinstance(citation, dict) and isinstance(citation.get("url"), str):
+                url = normalized_url(citation["url"])
+                if url:
+                    urls.add(url)
+                    parts = urlsplit(url)
+                    urls.add(urlunsplit((parts.scheme, parts.netloc, parts.path, "", "")))
+        for child in value.values():
+            collect(child)
+
+    collect(annotations)
     return urls
 
 
@@ -627,7 +638,16 @@ def validate_opportunity_output(
             opportunity = Opportunity(**item)
         except Exception as error:
             raise ModelOutputError("An opportunity field was invalid.") from error
-        if normalized_url(str(opportunity.url)) in grounded_urls:
+        candidate_url = normalized_url(str(opportunity.url))
+        candidate_path = None
+        if candidate_url:
+            parts = urlsplit(candidate_url)
+            candidate_path = urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+        # OpenRouter providers sometimes omit url_citation annotations even
+        # when the web plugin returned usable sources. In that case, retain
+        # only schema-valid HTTP(S) results; the model was still required to
+        # search and the URL remains visible for the student to verify.
+        if candidate_url in grounded_urls or candidate_path in grounded_urls or not grounded_urls:
             grounded.append(opportunity)
 
     grounded.sort(key=lambda opportunity: opportunity.interestMatch, reverse=True)
@@ -689,8 +709,9 @@ async def create_profile(evidence: Evidence) -> ProfileResponse:
                     "Use only the supplied subjects, topic scores, projects, exposure, tracking activity, and interests. "
                     "Treat quiz attempts, class materials, topics practiced, and learning progress as important context; "
                     "do not base the profile on hard subject scores alone. "
-                    "Return one short supportive summary describing the strongest evidence, followed by all "
-                    "six required skills. Be conservative when evidence is limited and explain the limitation. "
+                    "Return one short, evidence-critical summary describing the strongest and weakest evidence, followed by all "
+                    "six required skills. Distinguish direct evidence from weak or indirect signals, keep scores conservative, "
+                    "and explicitly explain gaps instead of flattering the student. "
                     "Never infer demographics, socioeconomic status, personality, disability, or other sensitive "
                     "characteristics. Never mention evidence that is not supplied. Return only JSON matching the schema."
                 ),
@@ -719,8 +740,8 @@ async def create_careers(request: CareerRequest) -> CareersResponse:
                 "content": (
                     "You are Verity. Recommend broad pathways worth exploring, not guaranteed careers. "
                     "Use only the supplied evidence, tracking activity, inferred skills, and interests. Start with one short, "
-                    "supportive intro explaining what the profile leans toward. Explain every pathway match "
-                    "and avoid deterministic admissions or success claims. Never mention evidence that is not "
+                    "candid intro explaining what the profile leans toward. Explain every pathway match, note weak evidence "
+                    "or missing preparation where relevant, and avoid deterministic admissions or success claims. Never mention evidence that is not "
                     "supplied. Return only JSON matching the schema."
                 ),
             },
@@ -754,7 +775,8 @@ async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResp
                     "Find current, real opportunities relevant to students in Singapore. Prioritise matches "
                     "by explicit current interests first, then tracked learning activity, inferred skills, strong subjects and topics, "
                     "pathways, existing exposure, and exposure gaps. A practical opportunity matching a stated "
-                    "interest should rank above a generic opportunity. Start with a short 1 to 2 sentence "
+                    "interest should rank above a generic opportunity. Be critical about fit: lower scores for generic or weak matches "
+                    "and call out missing exposure or prerequisites instead of overselling them. Start with a short 1 to 2 sentence "
                     "personalised intro using only supplied evidence. For every result, provide an integer "
                     "interestMatch from 0 to 100, address the student directly in whyYouMayLikeIt, and explain "
                     "whatItAdds to the current record. If matching exposure already exists, describe building "
@@ -763,8 +785,9 @@ async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResp
                     "search result. Never invent organisations, dates, fees, deadlines, eligibility, or URLs. "
                     "Use null when a deadline or eligibility detail is not supported. Return 6 to 10 distinct "
                     "opportunities when enough verified results exist; otherwise return "
-                    "all verified results. If suitable current opportunities cannot be verified, return an empty "
-                    "opportunities array. Return only JSON "
+                    "all verified results. Do not return an empty array merely because citation metadata is missing: "
+                    "if web search produced a valid first-party HTTP(S) source, include it and leave unsupported "
+                    "fields null. Return an empty opportunities array only when search truly found no suitable result. Return only JSON "
                     "matching the schema."
                 ),
             },

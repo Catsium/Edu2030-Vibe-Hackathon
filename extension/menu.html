@@ -41,6 +41,17 @@
 
         <div id="stats-observation" class="personalized-intro" hidden></div>
 
+        <section class="tracking-section stats-exposure-section">
+          <div class="subsection-heading">
+            <div>
+              <h2>Projects / exposure</h2>
+              <p>Keep practical work, workshops, competitions, and experience visible.</p>
+            </div>
+            <button type="button" id="stats-add-project-button" class="small-button">+ Add</button>
+          </div>
+          <div id="stats-projects" class="exposure-list"></div>
+        </section>
+
         <div class="stats-overview">
           <article class="stat-card">
             <span class="stat-label">Strongest subjects</span>
@@ -155,7 +166,7 @@
               <h2>Projects / exposure</h2>
               <p>Add projects, competitions, workshops, courses, or work exposure.</p>
             </div>
-            <button type="button" id="add-project-button" class="small-button">+ Add record</button>
+            <button type="button" id="add-project-button" class="small-button">+ Add</button>
           </div>
           <div id="projects-editor" class="projects-editor"></div>
         </div>
@@ -185,10 +196,6 @@
 
         <div id="records-signal"></div>
         <div id="records-observation" class="personalized-intro" hidden></div>
-        <div class="records-section">
-          <h2>Subjects and topics</h2>
-          <div id="records-subjects" class="records-grid"></div>
-        </div>
         <div class="records-section">
           <h2>Learning activity</h2>
           <p class="disclaimer">Quiz attempts and saved class materials add context beyond test scores.</p>

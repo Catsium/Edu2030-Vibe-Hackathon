@@ -226,7 +226,9 @@ function normalizeProfile(saved) {
       id: project && project.id ? String(project.id) : makeId(),
       name: project && typeof project.name === "string" ? project.name : "",
       type: project && typeof project.type === "string" ? project.type : "Project",
-      description: project && typeof project.description === "string" ? project.description : ""
+      description: project && typeof project.description === "string" ? project.description : "",
+      imageData: project && typeof project.imageData === "string" && project.imageData.indexOf("data:image/") === 0
+        ? project.imageData : ""
     };
   });
 
@@ -398,12 +400,38 @@ function renderStatsTracking() {
   const activityHelpNode = byId("stats-activity-help");
   const subjectsGrid = byId("stats-subjects");
   const observationNode = byId("stats-observation");
+  const statsProjectsNode = byId("stats-projects");
   const analyseButton = byId("analyse-profile-button");
   if (!subjectsNode || !skillsNode || !quizCountNode || !subjectsGrid) {
     return;
   }
   if (analyseButton) {
     analyseButton.textContent = studentProfile.skillProfile ? "Refresh skill profile" : "Analyse My Profile";
+  }
+  if (statsProjectsNode) {
+    statsProjectsNode.replaceChildren();
+    const projects = studentProfile.evidence.projects || [];
+    if (!projects.length) {
+      addText(statsProjectsNode, "p", "empty-copy", "No projects or exposure have been recorded yet.");
+    } else {
+      projects.slice(0, 3).forEach(function (project) {
+        const card = addText(statsProjectsNode, "article", "exposure-card");
+        if (project.imageData && project.imageData.indexOf("data:image/") === 0) {
+          const image = document.createElement("img");
+          image.className = "exposure-image";
+          image.src = project.imageData;
+          image.alt = project.name || "Project image";
+          card.appendChild(image);
+        }
+        const heading = addText(card, "div", "skill-card-header");
+        addText(heading, "h3", null, project.name || "Untitled record");
+        addText(heading, "span", "tag", project.type);
+        addText(card, "p", null, project.description);
+      });
+      if (projects.length > 3) {
+        addText(statsProjectsNode, "p", "empty-copy", "+ " + (projects.length - 3) + " more in Records");
+      }
+    }
   }
 
   const scoredSubjects = studentProfile.evidence.subjects.map(function (subject) {
@@ -747,6 +775,17 @@ function renderDataInput() {
     description.setAttribute("aria-label", "Project or exposure description");
     row.appendChild(description);
 
+    const image = document.createElement("input");
+    image.type = "file";
+    image.accept = "image/*";
+    image.dataset.projectId = project.id;
+    image.dataset.field = "imageData";
+    image.setAttribute("aria-label", "Optional project image");
+    row.appendChild(image);
+    if (project.imageData) {
+      addText(row, "span", "project-image-note", "Image attached");
+    }
+
     const remove = addText(row, "button", "icon-button", "×");
     remove.type = "button";
     remove.title = "Delete record";
@@ -890,40 +929,15 @@ function profileObservation(skills) {
 }
 
 function renderRecords() {
-  const subjectsNode = byId("records-subjects");
   const chartNode = byId("records-skills-chart");
   const skillsNode = byId("records-skills");
   const strengthsNode = byId("records-strengths");
   const projectsNode = byId("records-projects");
   const activityNode = byId("records-learning-activity");
   const observationNode = byId("records-observation");
-  if (!subjectsNode || !chartNode || !skillsNode || !strengthsNode || !projectsNode) {
+  if (!chartNode || !skillsNode || !strengthsNode || !projectsNode) {
     return;
   }
-
-  subjectsNode.replaceChildren();
-  studentProfile.evidence.subjects.forEach(function (subject) {
-    const card = addText(subjectsNode, "article", "record-card");
-    const heading = addText(card, "div", "skill-card-header");
-    addText(heading, "h3", null, subject.name);
-    const metrics = subjectMetrics(subject);
-    addText(heading, "span", "record-score", validScore(metrics.finalScore) ? metrics.finalScore + "/100" : "Not recorded");
-    const breakdown = addText(card, "div", "score-breakdown");
-    addText(breakdown, "span", null, "Quiz 70%: " + (metrics.quizScore === null ? "pending" : metrics.quizScore + "/100"));
-    addText(breakdown, "span", null, "Test 30%: " + (metrics.testScore === null ? "pending" : metrics.testScore + "/100"));
-    if (!subject.topics.length) {
-      addText(card, "p", "empty-copy", "No topic scores recorded.");
-    } else {
-      const list = addText(card, "ul", "topic-list");
-      subject.topics.forEach(function (topic) {
-        addText(list, "li", null, topic.name + " — " + (validScore(topic.score) ? topic.score + "/100" : "Not recorded"));
-      });
-    }
-    trackedTopicScores(subject.name).forEach(function (topic) {
-      const list = card.querySelector(".topic-list") || addText(card, "ul", "topic-list");
-      addText(list, "li", null, "Quiz · " + topic.name + " — " + topic.score + "/100");
-    });
-  });
 
   const skills = studentProfile.skillProfile && Array.isArray(studentProfile.skillProfile.skills)
     ? studentProfile.skillProfile.skills
@@ -962,12 +976,6 @@ function renderRecords() {
 
   strengthsNode.replaceChildren();
   const strengths = [];
-  studentProfile.evidence.subjects.forEach(function (subject) {
-    const score = currentSubjectScore(subject);
-    if (validScore(score) && Number(score) >= 70) {
-      strengths.push({ title: subject.name, detail: score + "/100 subject evidence" });
-    }
-  });
   skills.filter(function (skill) { return Number(skill.score) >= 70; }).forEach(function (skill) {
     strengths.push({ title: skill.name, detail: skill.score + "/100 inferred skill evidence" });
   });
@@ -1205,7 +1213,8 @@ function cleanEvidence() {
         id: project.id,
         name: String(project.name).trim(),
         type: project.type,
-        description: String(project.description).trim()
+        description: String(project.description).trim(),
+        imageData: project.imageData && project.imageData.indexOf("data:image/") === 0 ? project.imageData : ""
       };
     }),
     interests: String(studentProfile.evidence.interests || "").trim()
@@ -1912,6 +1921,22 @@ function loadDemoData() {
   });
 }
 
+function addProjectRecord() {
+  if (busy) {
+    return;
+  }
+  studentProfile.evidence.projects.push({
+    id: makeId(),
+    name: "",
+    type: "Project",
+    description: "",
+    imageData: ""
+  });
+  markEvidenceDirty();
+  renderDataInput();
+  navigate("data-input");
+}
+
 function updateSubjectField(target) {
   const subject = studentProfile.evidence.subjects[Number(target.dataset.subjectIndex)];
   if (!subject) {
@@ -2017,6 +2042,29 @@ function bindUi(root) {
     const project = studentProfile.evidence.projects.find(function (item) {
       return item.id === target.dataset.projectId;
     });
+    if (project && target.dataset.field === "imageData") {
+      const file = target.files && target.files[0];
+      if (!file) {
+        return;
+      }
+      if (!file.type || file.type.indexOf("image/") !== 0) {
+        setStatus("data-status", "Choose an image file for this record.", "error");
+        return;
+      }
+      if (file.size > 1500000) {
+        setStatus("data-status", "Keep project images under 1.5 MB for this prototype.", "error");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function () {
+        project.imageData = String(reader.result || "");
+        markEvidenceDirty();
+        renderDataInput();
+        renderStatsTracking();
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
     if (project && target.dataset.field) {
       project[target.dataset.field] = target.value;
       markEvidenceDirty();

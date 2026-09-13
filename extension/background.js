@@ -1,4 +1,4 @@
-const BACKEND_API_URL = "https://edu2030-vibe-hackathon.onrender.com";
+const BACKEND_APIs_URL = "https://edu2030-vibe-hackathon.onrender.com";
 const ALLOWED_ENDPOINTS = new Set([
   "/api/profile",
   "/api/careers",
