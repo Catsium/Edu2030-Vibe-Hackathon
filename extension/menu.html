@@ -88,7 +88,11 @@
               </div>
             </div>
             <div class="material-form">
-              <input id="material-file-input" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="Upload class material">
+              <label class="material-dropzone" for="material-file-input">
+                <span class="material-dropzone-title">Choose class material</span>
+                <span id="material-file-name" class="material-dropzone-copy">PDF, DOCX, TXT, MD, or CSV</span>
+              </label>
+              <input id="material-file-input" class="material-file-input" type="file" accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" aria-label="Upload class material">
               <input id="material-title-input" type="text" placeholder="Material title (optional)">
               <select id="material-subject-select" aria-label="Material subject"></select>
               <button type="button" id="add-material-button" class="secondary-button">Save material</button>

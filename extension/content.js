@@ -1089,31 +1089,49 @@ function renderCareers() {
     addText(opportunitiesNode, "p", "empty-copy", "Add evidence, then search for current opportunities. Pathways are optional context.");
     return;
   }
+  const grouped = {};
   currentOpportunities.slice().sort(function (a, b) {
     return Number(b.interestMatch) - Number(a.interestMatch);
   }).forEach(function (opportunity) {
-    const card = addText(opportunitiesNode, "article", "opportunity-card");
-    addText(card, "h3", null, opportunity.title);
-    addText(card, "p", null, opportunity.organisation);
-    addText(card, "div", "match-score", Number(opportunity.interestMatch) + "% Verity Match");
-    addText(card, "p", null, opportunity.summary);
-    addText(card, "p", "opportunity-label", "Why you may like it");
-    addText(card, "p", null, opportunity.whyYouMayLikeIt);
-    addText(card, "p", "opportunity-label", "What this adds");
-    addText(card, "p", null, opportunity.whatItAdds);
-    const meta = addText(card, "div", "opportunity-meta");
-    if (opportunity.deadline) {
-      addText(meta, "span", null, "Deadline: " + opportunity.deadline);
+    const category = opportunityCategory(opportunity);
+    if (!grouped[category]) {
+      grouped[category] = [];
     }
-    if (opportunity.eligibility) {
-      addText(meta, "span", null, "Eligibility: " + opportunity.eligibility);
-    }
-    if (safeHttpUrl(opportunity.url)) {
-      const link = addText(card, "a", null, "View source");
-      link.href = opportunity.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-    }
+    grouped[category].push(opportunity);
+  });
+
+  Object.keys(grouped).forEach(function (category) {
+    const group = addText(opportunitiesNode, "section", "opportunity-group");
+    const groupHeading = addText(group, "div", "opportunity-group-heading");
+    addText(groupHeading, "h3", null, category);
+    addText(groupHeading, "span", null, grouped[category].length + (grouped[category].length === 1 ? " option" : " options"));
+    const groupList = addText(group, "div", "opportunity-group-list");
+    grouped[category].forEach(function (opportunity) {
+      const card = addText(groupList, "article", "opportunity-card");
+      const cardHeading = addText(card, "div", "opportunity-card-heading");
+      addText(cardHeading, "h3", null, opportunity.title);
+      addText(cardHeading, "span", "opportunity-kind", category.replace(" & programmes", ""));
+      addText(card, "p", "opportunity-organisation", opportunity.organisation);
+      addText(card, "div", "match-score", Number(opportunity.interestMatch) + "% Verity Match");
+      addText(card, "p", null, opportunity.summary);
+      addText(card, "p", "opportunity-label", "Why you may like it");
+      addText(card, "p", null, opportunity.whyYouMayLikeIt);
+      addText(card, "p", "opportunity-label", "What this adds");
+      addText(card, "p", null, opportunity.whatItAdds);
+      const meta = addText(card, "div", "opportunity-meta");
+      if (opportunity.deadline) {
+        addText(meta, "span", null, "Deadline: " + opportunity.deadline);
+      }
+      if (opportunity.eligibility) {
+        addText(meta, "span", null, "Eligibility: " + opportunity.eligibility);
+      }
+      if (safeHttpUrl(opportunity.url)) {
+        const link = addText(card, "a", null, "View source");
+        link.href = opportunity.url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+    });
   });
 }
 
@@ -1300,7 +1318,7 @@ function validateCareerResponse(data) {
 
 function validateOpportunityResponse(data) {
   if (!data || typeof data.intro !== "string" || !data.intro.trim() ||
-      !Array.isArray(data.opportunities) || data.opportunities.length > 6) {
+      !Array.isArray(data.opportunities) || data.opportunities.length > 10) {
     throw new Error("The opportunities response was malformed.");
   }
   data.opportunities.forEach(function (opportunity) {
@@ -1318,6 +1336,23 @@ function validateOpportunityResponse(data) {
       throw new Error("The opportunities response contained an invalid result.");
     }
   });
+}
+
+function opportunityCategory(opportunity) {
+  const text = (String(opportunity.title || "") + " " + String(opportunity.summary || "")).toLowerCase();
+  if (/hackathon|hack\b/.test(text)) {
+    return "Hackathons";
+  }
+  if (/workshop|bootcamp|masterclass|clinic|hands-on/.test(text)) {
+    return "Workshops & programmes";
+  }
+  if (/competition|challenge|contest|olympiad/.test(text)) {
+    return "Competitions & challenges";
+  }
+  if (/internship|job shadow|mentorship|programme|program|event|camp/.test(text)) {
+    return "Events & programmes";
+  }
+  return "Other opportunities";
 }
 
 function validateQuizResponse(data) {
@@ -1540,6 +1575,57 @@ function materialKind(file) {
   return "text/plain";
 }
 
+function updateMaterialFileLabel(fileInput) {
+  const label = byId("material-file-name");
+  if (!label) {
+    return;
+  }
+  const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+  label.textContent = file ? file.name : "PDF, DOCX, TXT, MD, or CSV";
+  label.classList.toggle("selected", Boolean(file));
+}
+
+function demoQuizForMaterial(material, focusTopic) {
+  const topic = String(focusTopic || "").trim() || (material.subject === "Science" ? "Forces and motion" : "Key concepts");
+  if (material.subject === "Science") {
+    return {
+      title: "Demo quiz · Forces and motion",
+      subject: material.subject,
+      topic: topic,
+      questions: [
+        {
+          question: "What happens when forces on an object are balanced?",
+          options: ["Its motion does not change", "It always accelerates", "It disappears", "It becomes lighter"],
+          answerIndex: 0,
+          topic: topic
+        },
+        {
+          question: "What can an unbalanced force cause?",
+          options: ["A change in motion", "No change at all", "Only a colour change", "The object to lose mass"],
+          answerIndex: 0,
+          topic: topic
+        },
+        {
+          question: "Which example shows an unbalanced force?",
+          options: ["A football being kicked", "A book resting on a table", "A still picture frame", "A parked bicycle"],
+          answerIndex: 0,
+          topic: topic
+        }
+      ]
+    };
+  }
+  return {
+    title: "Demo quiz · " + material.subject,
+    subject: material.subject,
+    topic: topic,
+    questions: [
+      { question: "Which statement best summarises the class material?", options: ["The main idea is supported by evidence", "The topic has no useful patterns", "Every answer is unrelated", "The material cannot be applied"], answerIndex: 0, topic: topic },
+      { question: "Which action shows understanding of this topic?", options: ["Apply the idea to a new example", "Ignore the key terms", "Copy without checking", "Skip the explanation"], answerIndex: 0, topic: topic },
+      { question: "What should you do when solving a new question?", options: ["Identify the concept and work step by step", "Guess immediately", "Use no evidence", "Leave it blank"], answerIndex: 0, topic: topic }
+    ]
+  };
+}
+
 async function addMaterial() {
   if (busy) {
     return;
@@ -1587,6 +1673,7 @@ async function addMaterial() {
     await storageSet();
     if (fileInput) {
       fileInput.value = "";
+      updateMaterialFileLabel(fileInput);
     }
     if (titleInput) {
       titleInput.value = "";
@@ -1631,14 +1718,23 @@ async function generateQuizForMaterial(materialId) {
   setBusy(true, "Verity is turning your class material into a short quiz...");
   setStatus("quiz-status", "Generating a targeted quiz…", "");
   try {
-    const result = await requestBackend("/api/quiz", {
-      subject: material.subject,
-      materialName: material.name,
-      materialText: material.contentType === "text/plain" ? material.content : "",
-      materialData: material.contentType === "text/plain" ? null : material.content,
-      materialType: material.contentType || "text/plain",
-      focusTopic: topicSelect ? String(topicSelect.value || "").trim() : ""
-    });
+    const focusTopic = topicSelect ? String(topicSelect.value || "").trim() : "";
+    let result;
+    if (studentProfile.evidence.isDemoData || material.name.indexOf("Demo ·") === 0) {
+      // Keep the showcase deterministic and instant while preserving the AI
+      // endpoint for real uploaded materials.
+      await new Promise(function (resolve) { setTimeout(resolve, 450); });
+      result = demoQuizForMaterial(material, focusTopic);
+    } else {
+      result = await requestBackend("/api/quiz", {
+        subject: material.subject,
+        materialName: material.name,
+        materialText: material.contentType === "text/plain" ? material.content : "",
+        materialData: material.contentType === "text/plain" ? null : material.content,
+        materialType: material.contentType || "text/plain",
+        focusTopic: focusTopic
+      });
+    }
     validateQuizResponse(result);
     const quiz = {
       id: makeId(),
@@ -1656,8 +1752,8 @@ async function generateQuizForMaterial(materialId) {
     activeQuizId = quiz.id;
     renderAll();
     navigate("stats");
-    setStatus("quiz-status", "Quiz ready. Take it to update the subject score.", "success");
-    setMascotState("ready", "Your targeted quiz is ready.");
+    setStatus("quiz-status", "Done! Quiz ready. Take it to update the subject score.", "success");
+    setMascotState("ready", "Done! Your targeted quiz is ready.");
   } catch (error) {
     setStatus("quiz-status", error.message, "error");
     setMascotState("error", "Verity couldn't make that quiz yet.");
@@ -1861,6 +1957,9 @@ function bindUi(root) {
   root.querySelector("#find-careers-button").addEventListener("click", findCareers);
   root.querySelector("#find-opportunities-button").addEventListener("click", findOpportunities);
   root.querySelector("#add-material-button").addEventListener("click", addMaterial);
+  root.querySelector("#material-file-input").addEventListener("change", function () {
+    updateMaterialFileLabel(this);
+  });
   root.querySelector("#generate-quiz-button").addEventListener("click", function () {
     const select = byId("quiz-material-select");
     generateQuizForMaterial(select ? select.value : "");

@@ -274,7 +274,7 @@ OPPORTUNITIES_SCHEMA = {
             "intro": {"type": "string", "minLength": 1},
             "opportunities": {
                 "type": "array",
-                "maxItems": 6,
+                "maxItems": 10,
                 "items": {
                     "type": "object",
                     "properties": {
@@ -598,7 +598,7 @@ def validate_opportunity_output(
         raise ModelOutputError("The opportunities response has the wrong shape.")
     if not isinstance(raw["intro"], str) or not raw["intro"].strip():
         raise ModelOutputError("The opportunity introduction was missing.")
-    if len(raw["opportunities"]) > 6:
+    if len(raw["opportunities"]) > 10:
         raise ModelOutputError("The opportunities response contained too many results.")
 
     grounded_urls = citation_urls(annotations)
@@ -761,8 +761,10 @@ async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResp
                     "on it instead of claiming a gap. "
                     "Use only facts supported by the search results. Copy each URL exactly from a cited "
                     "search result. Never invent organisations, dates, fees, deadlines, eligibility, or URLs. "
-                    "Use null when a deadline or eligibility detail is not supported. If suitable current "
-                    "opportunities cannot be verified, return an empty opportunities array. Return only JSON "
+                    "Use null when a deadline or eligibility detail is not supported. Return 6 to 10 distinct "
+                    "opportunities when enough verified results exist; otherwise return "
+                    "all verified results. If suitable current opportunities cannot be verified, return an empty "
+                    "opportunities array. Return only JSON "
                     "matching the schema."
                 ),
             },
