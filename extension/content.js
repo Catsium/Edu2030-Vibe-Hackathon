@@ -96,7 +96,8 @@ function normalizeTracking(saved) {
         id: material && material.id ? String(material.id) : makeId(),
         name: material && typeof material.name === "string" ? material.name : "Untitled material",
         subject: material && SUBJECT_NAMES.includes(material.subject) ? material.subject : SUBJECT_NAMES[0],
-        content: material && typeof material.content === "string" ? material.content.slice(0, 8000) : "",
+        content: material && typeof material.content === "string" ? material.content.slice(0, 400000) : "",
+        contentType: material && typeof material.contentType === "string" ? material.contentType : "text/plain",
         uploadedAt: material && typeof material.uploadedAt === "string" ? material.uploadedAt : ""
       };
     }).filter(function (material) { return material.content.trim(); });
@@ -1478,6 +1479,30 @@ async function findOpportunities() {
   }
 }
 
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+function materialKind(file) {
+  const name = String(file.name || "").toLowerCase();
+  if (name.endsWith(".pdf") || file.type === "application/pdf") {
+    return "application/pdf";
+  }
+  if (name.endsWith(".docx") || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (name.endsWith(".doc") || file.type === "application/msword") {
+    return "application/msword";
+  }
+  return "text/plain";
+}
+
 async function addMaterial() {
   if (busy) {
     return;
@@ -1493,9 +1518,21 @@ async function addMaterial() {
   setBusy(true, "Verity is saving your class material...");
   setStatus("material-status", "Saving material locally…", "");
   try {
-    const content = String(await file.text()).trim().slice(0, 8000);
+    const contentType = materialKind(file);
+    let content = "";
+    if (contentType === "text/plain") {
+      content = String(await file.text()).trim().slice(0, 8000);
+    } else {
+      if (contentType === "application/msword") {
+        throw new Error("Legacy .doc files are not supported yet. Save the document as .docx or PDF and try again.");
+      }
+      if (file.size > 300000) {
+        throw new Error("For this prototype, keep PDF/DOCX files under 300 KB.");
+      }
+      content = arrayBufferToBase64(await file.arrayBuffer());
+    }
     if (!content) {
-      throw new Error("This file does not contain readable text. Use a TXT, MD, or CSV handout for the demo.");
+      throw new Error("This file does not contain readable material.");
     }
     const tracking = studentProfile.tracking || createEmptyTracking();
     tracking.materials.unshift({
@@ -1503,6 +1540,7 @@ async function addMaterial() {
       name: String((titleInput && titleInput.value) || file.name).trim() || file.name,
       subject: subjectSelect && SUBJECT_NAMES.includes(subjectSelect.value) ? subjectSelect.value : SUBJECT_NAMES[0],
       content: content,
+      contentType: contentType,
       uploadedAt: new Date().toISOString()
     });
     studentProfile.tracking = tracking;
@@ -1559,7 +1597,9 @@ async function generateQuizForMaterial(materialId) {
     const result = await requestBackend("/api/quiz", {
       subject: material.subject,
       materialName: material.name,
-      materialText: material.content,
+      materialText: material.contentType === "text/plain" ? material.content : "",
+      materialData: material.contentType === "text/plain" ? null : material.content,
+      materialType: material.contentType || "text/plain",
       focusTopic: topicSelect ? String(topicSelect.value || "").trim() : ""
     });
     validateQuizResponse(result);

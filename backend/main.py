@@ -1,5 +1,12 @@
+import base64
+import binascii
+import html
+import io
 import json
 import os
+import re
+import zipfile
+import zlib
 from datetime import date
 from typing import Any, Dict, List, Optional, Set, Tuple
 from urllib.parse import urlsplit, urlunsplit
@@ -66,7 +73,9 @@ class Evidence(BaseModel):
 class QuizRequest(BaseModel):
     subject: str
     materialName: str = Field(min_length=1)
-    materialText: str = Field(min_length=1, max_length=8000)
+    materialText: str = Field(default="", max_length=8000)
+    materialData: Optional[str] = None
+    materialType: str = "text/plain"
     focusTopic: str = ""
 
 
@@ -468,11 +477,60 @@ def validate_career_output(raw: Dict[str, Any]) -> CareersResponse:
     return CareersResponse(intro=raw["intro"].strip(), pathways=validated)
 
 
+def extract_pdf_text(data: bytes) -> str:
+    chunks: List[str] = []
+    for match in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", data, re.S):
+        stream = match.group(1)
+        try:
+            stream = zlib.decompress(stream)
+        except zlib.error:
+            pass
+        decoded = stream.decode("latin-1", errors="ignore")
+        for text_match in re.finditer(r"\((?:\\.|[^\\)])*\)", decoded):
+            value = text_match.group(0)[1:-1]
+            value = re.sub(r"\\([\\()])", r"\1", value)
+            if value.strip():
+                chunks.append(value)
+    return " ".join(chunks).strip()
+
+
+def extract_docx_text(data: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            xml = archive.read("word/document.xml").decode("utf-8", errors="ignore")
+    except (KeyError, zipfile.BadZipFile):
+        return ""
+    values = re.findall(r"<w:t[^>]*>(.*?)</w:t>", xml, flags=re.S)
+    return html.unescape(" ".join(values)).strip()
+
+
+def material_text(request: QuizRequest) -> str:
+    if request.materialText.strip():
+        return request.materialText.strip()
+    if not request.materialData:
+        return ""
+    try:
+        data = base64.b64decode(request.materialData, validate=True)
+    except (ValueError, binascii.Error):
+        return ""
+    if request.materialType == "application/pdf":
+        return extract_pdf_text(data)
+    if request.materialType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return extract_docx_text(data)
+    return ""
+
+
 def validate_quiz_request(request: QuizRequest) -> None:
     if request.subject not in SUBJECT_NAMES:
         raise HTTPException(status_code=422, detail="Choose one of the supported subjects.")
-    if not request.materialText.strip():
-        raise HTTPException(status_code=422, detail="Class material text is required.")
+    if request.materialType not in {
+        "text/plain",
+        "application/pdf",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }:
+        raise HTTPException(status_code=422, detail="Use TXT, MD, CSV, PDF, or DOCX material.")
+    if not material_text(request):
+        raise HTTPException(status_code=422, detail="The uploaded material did not contain readable text.")
 
 
 def validate_quiz_output(raw: Dict[str, Any]) -> QuizResponse:
@@ -588,6 +646,7 @@ async def health() -> Dict[str, str]:
 @app.post("/api/quiz", response_model=QuizResponse)
 async def create_quiz(request: QuizRequest) -> QuizResponse:
     validate_quiz_request(request)
+    extracted_text = material_text(request)
     raw, _ = await call_openrouter(
         [
             {
@@ -605,7 +664,7 @@ async def create_quiz(request: QuizRequest) -> QuizResponse:
                 "content": (
                     "Subject: " + request.subject + "\nMaterial title: " + request.materialName
                     + "\nFocus topic: " + (request.focusTopic or "Use the most useful topic in the material")
-                    + "\nClass material:\n" + request.materialText
+                    + "\nClass material:\n" + extracted_text
                 ),
             },
         ],
