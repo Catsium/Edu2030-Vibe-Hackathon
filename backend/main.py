@@ -121,7 +121,8 @@ class CareersResponse(BaseModel):
     pathways: List[CareerPathway]
 
 
-class OpportunityRequest(CareerRequest):
+class OpportunityRequest(Evidence):
+    skills: List[SkillEvidence] = Field(default_factory=list)
     pathways: List[CareerPathway] = Field(default_factory=list)
     currentRequest: str = ""
 
@@ -741,7 +742,8 @@ async def create_careers(request: CareerRequest) -> CareersResponse:
 @app.post("/api/opportunities", response_model=OpportunitiesResponse)
 async def create_opportunities(request: OpportunityRequest) -> OpportunitiesResponse:
     validate_evidence(request)
-    validate_skills(request.skills)
+    if request.skills:
+        validate_skills(request.skills)
     search_plugins = [{"id": "web"}]
     raw, annotations = await call_openrouter(
         [

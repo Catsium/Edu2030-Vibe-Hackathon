@@ -240,7 +240,13 @@ function normalizeProfile(saved) {
 }
 
 function runtimeUrl(path) {
-  return chrome.runtime.getURL(path);
+  try {
+    return chrome.runtime.getURL(path);
+  } catch (error) {
+    // A tab can retain an old content script after the unpacked extension is
+    // reloaded. Keep the UI usable long enough to tell the student to refresh.
+    return "";
+  }
 }
 
 function setStatus(id, message, type) {
@@ -256,7 +262,10 @@ function setMascotState(state, message) {
   const mascot = byId("verity-header-mascot");
   const caption = byId("verity-mascot-caption");
   if (mascot) {
-    mascot.src = runtimeUrl(state === "loading" ? "mascot/anim/14s_idle_to_loading.gif" : "mascot/static/verity.jpeg");
+    const mascotUrl = runtimeUrl(state === "loading" ? "mascot/anim/14s_idle_to_loading.gif" : "mascot/static/verity.jpeg");
+    if (mascotUrl) {
+      mascot.src = mascotUrl;
+    }
     mascot.alt = state === "loading" ? "Verity is working" : "Verity";
   }
   if (caption) {
@@ -277,6 +286,7 @@ function setBusy(value, message) {
   [
     "save-evidence-button",
     "analyse-profile-button",
+    "analyse-profile-from-data-button",
     "load-demo-data-button",
     "find-careers-button",
     "find-opportunities-button",
@@ -388,8 +398,12 @@ function renderStatsTracking() {
   const activityHelpNode = byId("stats-activity-help");
   const subjectsGrid = byId("stats-subjects");
   const observationNode = byId("stats-observation");
+  const analyseButton = byId("analyse-profile-button");
   if (!subjectsNode || !skillsNode || !quizCountNode || !subjectsGrid) {
     return;
+  }
+  if (analyseButton) {
+    analyseButton.textContent = studentProfile.skillProfile ? "Refresh skill profile" : "Analyse My Profile";
   }
 
   const scoredSubjects = studentProfile.evidence.subjects.map(function (subject) {
@@ -753,10 +767,6 @@ function renderRadarChart(node, skills) {
   }
   skills = Array.isArray(skills) ? skills : [];
   node.replaceChildren();
-  if (!skills.length) {
-    addText(node, "p", "empty-copy", "Analyse your saved evidence to see your skill shape.");
-    return;
-  }
 
   const svgNamespace = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNamespace, "svg");
@@ -853,7 +863,9 @@ function renderRadarChart(node, skills) {
     });
   });
   node.appendChild(svg);
-  addText(node, "p", "radar-caption", "Scores show the strength of evidence currently available.");
+  addText(node, "p", "radar-caption", skills.length
+    ? "Scores show the strength of evidence currently available."
+    : "Analyse your saved evidence to fill the six skill dimensions.");
 }
 
 function profileObservation(skills) {
@@ -1074,7 +1086,7 @@ function renderCareers() {
     return;
   }
   if (!currentOpportunities.length) {
-    addText(opportunitiesNode, "p", "empty-copy", "Find pathways first, then search for current opportunities.");
+    addText(opportunitiesNode, "p", "empty-copy", "Add evidence, then search for current opportunities. Pathways are optional context.");
     return;
   }
   currentOpportunities.slice().sort(function (a, b) {
@@ -1227,21 +1239,31 @@ async function persistEvidence() {
 
 function requestBackend(endpoint, payload) {
   return new Promise(function (resolve, reject) {
-    chrome.runtime.sendMessage({
-      type: "VERITY_API_REQUEST",
-      endpoint: endpoint,
-      payload: payload
-    }, function (response) {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      if (!response || !response.ok) {
-        reject(new Error(response && response.error ? response.error : "The backend did not respond."));
-        return;
-      }
-      resolve(response.data);
-    });
+    try {
+      chrome.runtime.sendMessage({
+        type: "VERITY_API_REQUEST",
+        endpoint: endpoint,
+        payload: payload
+      }, function (response) {
+        if (chrome.runtime.lastError) {
+          const message = chrome.runtime.lastError.message || "";
+          reject(new Error(message.includes("Extension context invalidated")
+            ? "This extension was reloaded. Refresh the page, reopen Verity, and try again."
+            : message));
+          return;
+        }
+        if (!response || !response.ok) {
+          reject(new Error(response && response.error ? response.error : "The backend did not respond."));
+          return;
+        }
+        resolve(response.data);
+      });
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      reject(new Error(message.includes("Extension context invalidated")
+        ? "This extension was reloaded. Refresh the page, reopen Verity, and try again."
+        : message));
+    }
   });
 }
 
@@ -1370,6 +1392,8 @@ async function analyseProfile() {
   if (busy) {
     return;
   }
+  // Keep the action and its feedback visible even when launched from Data Input.
+  navigate("stats");
   setBusy(true, "Verity is looking through your strengths...");
   setStatus("stats-status", "Verity is analysing your tracked evidence…", "");
   try {
@@ -1385,9 +1409,9 @@ async function analyseProfile() {
     studentProfile.careers = null;
     await storageSet();
     renderAll();
-    navigate("records");
-    setStatus("stats-status", "Profile analysed and saved.", "success");
-    setMascotState("ready", "Verity found a clearer picture of your strengths.");
+    navigate("stats");
+    setStatus("stats-status", "Done! Profile analysed and saved.", "success");
+    setMascotState("ready", "Done! Verity found a clearer picture of your strengths.");
   } catch (error) {
     setStatus("stats-status", error.message, "error");
     setMascotState("error", "Verity couldn't complete that yet.");
@@ -1401,7 +1425,8 @@ async function findCareers() {
     return;
   }
   if (!studentProfile.skillProfile) {
-    setStatus("careers-status", "Analyse your profile before finding pathways.", "error");
+    setStatus("careers-status", "Open Stats + Tracking and click Analyse My Profile first.", "error");
+    navigate("stats");
     return;
   }
   setBusy(true, "Verity is connecting your strengths to possible pathways...");
@@ -1440,8 +1465,11 @@ async function findOpportunities() {
   if (busy) {
     return;
   }
-  if (!studentProfile.skillProfile || !studentProfile.careers) {
-    setStatus("opportunities-status", "Find pathways before searching for opportunities.", "error");
+  const hasEvidence = studentProfile.evidence.subjects.some(function (subject) {
+    return validScore(subject.actualTestScore) || validScore(subject.score);
+  }) || (studentProfile.tracking && studentProfile.tracking.materials.length);
+  if (!hasEvidence) {
+    setStatus("opportunities-status", "Add some student evidence before searching for opportunities.", "error");
     return;
   }
   setBusy(true, "Verity is looking for opportunities that fit you...");
@@ -1454,8 +1482,12 @@ async function findOpportunities() {
       projects: evidencePayload().projects,
       interests: studentProfile.evidence.interests,
       tracking: evidencePayload().tracking,
-      skills: studentProfile.skillProfile.skills,
-      pathways: studentProfile.careers.pathways,
+      skills: studentProfile.skillProfile && Array.isArray(studentProfile.skillProfile.skills)
+        ? studentProfile.skillProfile.skills
+        : [],
+      pathways: studentProfile.careers && Array.isArray(studentProfile.careers.pathways)
+        ? studentProfile.careers.pathways
+        : [],
       currentRequest: String((byId("opportunity-request") || {}).value || "").trim()
     });
     validateOpportunityResponse(result);
@@ -1771,8 +1803,14 @@ function loadDemoData() {
   currentOpportunityIntro = "";
   activeQuizId = "";
   storageSet().then(function () {
+    // Demo data is immediately actionable: open the analysis view instead of
+    // leaving the student on the editor with no obvious next step.
+    currentView = "stats";
     renderAll();
-    setStatus("data-status", "Demo data loaded. Analyse it to generate Verity’s skill profile.", "success");
+    setStatus("stats-status", "Demo data loaded. Click Analyse My Profile to generate Verity’s six skills.", "success");
+    // Make the demo flow one click: immediately send the loaded evidence through
+    // the existing profile endpoint so Careers is ready when analysis succeeds.
+    analyseProfile();
   }).catch(function (error) {
     setStatus("data-status", error.message, "error");
   });
@@ -1818,6 +1856,7 @@ function bindUi(root) {
   });
   root.querySelector("#save-evidence-button").addEventListener("click", saveEvidence);
   root.querySelector("#analyse-profile-button").addEventListener("click", analyseProfile);
+  root.querySelector("#analyse-profile-from-data-button").addEventListener("click", analyseProfile);
   root.querySelector("#load-demo-data-button").addEventListener("click", loadDemoData);
   root.querySelector("#find-careers-button").addEventListener("click", findCareers);
   root.querySelector("#find-opportunities-button").addEventListener("click", findOpportunities);
